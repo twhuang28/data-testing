@@ -1,7 +1,7 @@
 import pandas as pd
 import duckdb
 import pandera as pa
-from app.schemas import source_df_schema, output_df_schema
+from app.schemas import source_df_schema, output_df_schema, failed_source_df_schema
 
 
 def import_data(path: str) -> pd.DataFrame:
@@ -16,6 +16,21 @@ def flatten_df(source_df: pd.DataFrame) -> pd.DataFrame:
             SUM(IF(event_id='show', count, 0))::BIGINT AS shows,
             SUM(IF(event_id='click', count, 0))::BIGINT AS clicks,
             SUM(IF(event_id='install', count, 0))::BIGINT AS installs
+        FROM source_df
+        GROUP BY hr_ts, campaign_id, creative_id
+        ORDER BY hr_ts, campaign_id, creative_id;
+    """
+    output_df = duckdb.sql(sql).df()
+    return output_df
+
+@pa.check_io(source_df=failed_source_df_schema, out=output_df_schema, lazy=True)
+def failed_flatten_df(source_df: pd.DataFrame) -> pd.DataFrame:
+    sql = """
+        SELECT
+            hr_ts, campaign_id, creative_id,
+            SUM(IF(event_id='show', count, 0))::INTERGER AS shows,
+            SUM(IF(event_id='click', count, 0))::INTERGER AS clicks,
+            SUM(IF(event_id='install', count, 0))::INTERGER AS installs
         FROM source_df
         GROUP BY hr_ts, campaign_id, creative_id
         ORDER BY hr_ts, campaign_id, creative_id;
@@ -44,6 +59,10 @@ if __name__ == '__main__':
     print('\n')
     print('############ Schema inference to script #############')
     print(schema.to_script())
+
+    print('\n')
+    print('############ Failed case #############')
+    failed_output_df = failed_flatten_df(df)
 
     # schema = show_schema(output_df)
     # print(schema)
