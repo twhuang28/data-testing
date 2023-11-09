@@ -1,0 +1,6 @@
+pandas == 2.0.3
+pytest == 7.2.0
+duckdb == 0.9.1
+pandera == 0.17.2
+pandera[io]
+hypothesis == 6.88.3
